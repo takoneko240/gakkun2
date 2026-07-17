@@ -1,0 +1,12 @@
+{
+  "excel_path": "kanji.xlsx",
+  "interval_minutes": 5,
+  "retry_minutes": 1,
+  "multiplication_min": 2,
+  "multiplication_max": 9,
+  "categories": [
+    "multiplication",
+    "division",
+    "kanji"
+  ]
+}

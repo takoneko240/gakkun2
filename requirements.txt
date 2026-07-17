@@ -1,0 +1,4 @@
+openpyxl
+pystray
+pillow
+pywin32
