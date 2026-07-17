@@ -1,7 +1,7 @@
 import tkinter as tk
 import tkinter.font as tkfont
 
-from . import ime_control, keyboard_block, music
+from . import celebration, ime_control, keyboard_block, music
 
 CATEGORY_LABELS = {
     "multiplication": "掛け算",
@@ -10,6 +10,7 @@ CATEGORY_LABELS = {
 }
 
 SONG_POLL_MS = 1000
+CELEBRATE_COLORS = ["#34D399", "#FBBF24", "#60A5FA", "#F472B6"]
 
 
 def show_quiz(
@@ -40,6 +41,9 @@ def show_quiz(
     prompt_font = tkfont.Font(family="Meiryo", size=48, weight="bold")
     entry_font = tkfont.Font(family="Meiryo", size=32)
     status_font = tkfont.Font(family="Meiryo", size=26)
+
+    confetti_canvas = tk.Canvas(win, width=screen_w, height=screen_h, bg="#111827", highlightthickness=0)
+    confetti_canvas.place(x=0, y=0)
 
     money_var = tk.StringVar(value=f"獲得金額: {total_yen}円")
     tk.Label(
@@ -112,6 +116,12 @@ def show_quiz(
         else:
             schedule_next_song()
 
+    def pulse_status(remaining):
+        if remaining <= 0 or not win.winfo_exists():
+            return
+        status_label.configure(fg=CELEBRATE_COLORS[remaining % len(CELEBRATE_COLORS)])
+        win.after(150, lambda: pulse_status(remaining - 1))
+
     def close_and_report(correct):
         keyboard_block.set_blocking(False)
         stop_idle_music()
@@ -134,9 +144,13 @@ def show_quiz(
         entry.configure(state="disabled")
 
         if correct:
-            status_label.configure(text="正解！", fg="#34D399")
+            celebrate_font = tkfont.Font(family="Meiryo", size=44, weight="bold")
+            status_label.configure(text="🎉 正解！ 🎉", font=celebrate_font, fg=CELEBRATE_COLORS[0])
             money_var.set(f"獲得金額: {total_yen + allowance_per_correct}円")
-            win.after(750, lambda: close_and_report(True))
+            celebration.play_chime()
+            celebration.burst_confetti(confetti_canvas, screen_w, screen_h, duration_ms=2800)
+            pulse_status(18)
+            win.after(3000, lambda: close_and_report(True))
         else:
             status_label.configure(
                 text=f"不正解… 正解は「{question.answer}」", fg="#F87171"

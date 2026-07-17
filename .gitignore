@@ -4,3 +4,4 @@ build/
 dist/
 *.spec
 scores.json
+allowance.json
