@@ -10,15 +10,19 @@ CATEGORY_LABELS = {
 }
 
 
-def show_quiz(root, question, on_result):
+def show_quiz(root, question, on_result, monitor_geometry=None):
     win = tk.Toplevel(root)
     win.overrideredirect(True)
     win.attributes("-topmost", True)
     win.configure(bg="#111827")
 
-    screen_w = win.winfo_screenwidth()
-    screen_h = win.winfo_screenheight()
-    win.geometry(f"{screen_w}x{screen_h}+0+0")
+    if monitor_geometry:
+        left, top = monitor_geometry["left"], monitor_geometry["top"]
+        screen_w, screen_h = monitor_geometry["width"], monitor_geometry["height"]
+    else:
+        left, top = 0, 0
+        screen_w, screen_h = win.winfo_screenwidth(), win.winfo_screenheight()
+    win.geometry(f"{screen_w}x{screen_h}+{left}+{top}")
 
     win.protocol("WM_DELETE_WINDOW", lambda: None)
     win.bind("<Escape>", lambda e: "break")
@@ -69,6 +73,11 @@ def show_quiz(root, question, on_result):
 
     def close_and_report(correct):
         keyboard_block.set_blocking(False)
+        entry.unbind("<FocusIn>")
+        try:
+            win.after_cancel(ime_job)
+        except Exception:
+            pass
         win.destroy()
         on_result(correct, question)
 
@@ -99,6 +108,6 @@ def show_quiz(root, question, on_result):
     win.lift()
     win.focus_force()
     entry.focus_set()
-    win.after(50, apply_ime_mode)
+    ime_job = win.after(50, apply_ime_mode)
 
     return win

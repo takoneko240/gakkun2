@@ -5,12 +5,13 @@ RECHECK_MS = 5000
 
 
 class Scheduler:
-    def __init__(self, root, config, excel_path, scores_path):
+    def __init__(self, root, config, excel_path, scores_path, monitor_geometry=None):
         self.root = root
         self.config = config
         self.excel_path = excel_path
         self.scores_path = scores_path
         self.scores = scores_module.load_scores(scores_path)
+        self.monitor_geometry = monitor_geometry
         self.quiz_open = False
 
     def _pick_question(self):
@@ -41,7 +42,7 @@ class Scheduler:
 
     def _open_quiz(self, question):
         self.quiz_open = True
-        quiz_window.show_quiz(self.root, question, self._on_result)
+        quiz_window.show_quiz(self.root, question, self._on_result, self.monitor_geometry)
 
     def _on_result(self, correct, question):
         self.quiz_open = False
