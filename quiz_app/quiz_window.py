@@ -12,7 +12,10 @@ CATEGORY_LABELS = {
 SONG_POLL_MS = 1000
 
 
-def show_quiz(root, question, on_result, monitor_geometry=None, music_folder=None, idle_music_minutes=3):
+def show_quiz(
+    root, question, on_result, monitor_geometry=None, music_folder=None,
+    idle_music_minutes=3, total_yen=0, allowance_per_correct=0,
+):
     win = tk.Toplevel(root)
     win.overrideredirect(True)
     win.attributes("-topmost", True)
@@ -32,10 +35,16 @@ def show_quiz(root, question, on_result, monitor_geometry=None, music_folder=Non
 
     keyboard_block.set_blocking(True)
 
+    money_font = tkfont.Font(family="Meiryo", size=24, weight="bold")
     category_font = tkfont.Font(family="Meiryo", size=22)
     prompt_font = tkfont.Font(family="Meiryo", size=48, weight="bold")
     entry_font = tkfont.Font(family="Meiryo", size=32)
     status_font = tkfont.Font(family="Meiryo", size=26)
+
+    money_var = tk.StringVar(value=f"獲得金額: {total_yen}円")
+    tk.Label(
+        win, textvariable=money_var, font=money_font, fg="#FBBF24", bg="#111827"
+    ).place(relx=0.5, y=30, anchor="n")
 
     container = tk.Frame(win, bg="#111827")
     container.place(relx=0.5, rely=0.5, anchor="center")
@@ -126,6 +135,7 @@ def show_quiz(root, question, on_result, monitor_geometry=None, music_folder=Non
 
         if correct:
             status_label.configure(text="正解！", fg="#34D399")
+            money_var.set(f"獲得金額: {total_yen + allowance_per_correct}円")
             win.after(750, lambda: close_and_report(True))
         else:
             status_label.configure(

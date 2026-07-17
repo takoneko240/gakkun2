@@ -11,6 +11,7 @@ DEFAULTS = {
     "categories": ["multiplication", "division", "kanji"],
     "music_folder": "music",
     "idle_music_minutes": 3,
+    "allowance_per_correct": 2,
 }
 
 

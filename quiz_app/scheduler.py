@@ -1,3 +1,4 @@
+from . import allowance as allowance_module
 from . import excel_data, questions, quiz_window
 from . import scores as scores_module
 
@@ -5,7 +6,10 @@ RECHECK_MS = 5000
 
 
 class Scheduler:
-    def __init__(self, root, config, excel_path, scores_path, monitor_geometry=None, music_folder=None):
+    def __init__(
+        self, root, config, excel_path, scores_path, monitor_geometry=None,
+        music_folder=None, allowance_path=None,
+    ):
         self.root = root
         self.config = config
         self.excel_path = excel_path
@@ -13,6 +17,8 @@ class Scheduler:
         self.scores = scores_module.load_scores(scores_path)
         self.monitor_geometry = monitor_geometry
         self.music_folder = music_folder
+        self.allowance_path = allowance_path
+        self.total_yen = allowance_module.load_total(allowance_path) if allowance_path else 0
         self.quiz_open = False
 
     def _pick_question(self):
@@ -50,6 +56,8 @@ class Scheduler:
             monitor_geometry=self.monitor_geometry,
             music_folder=self.music_folder,
             idle_music_minutes=self.config["idle_music_minutes"],
+            total_yen=self.total_yen,
+            allowance_per_correct=self.config["allowance_per_correct"],
         )
 
     def _on_result(self, correct, question):
@@ -57,6 +65,10 @@ class Scheduler:
 
         scores_module.apply_result(self.scores, question.key, correct)
         scores_module.save_scores(self.scores_path, self.scores)
+
+        if correct and self.allowance_path:
+            self.total_yen += self.config["allowance_per_correct"]
+            allowance_module.save_total(self.allowance_path, self.total_yen)
 
         if not correct:
             retry_ms = int(self.config["retry_minutes"] * 60 * 1000)
