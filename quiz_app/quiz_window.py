@@ -9,13 +9,12 @@ CATEGORY_LABELS = {
     "kanji": "漢字",
 }
 
-SONG_POLL_MS = 1000
 CELEBRATE_COLORS = ["#34D399", "#FBBF24", "#60A5FA", "#F472B6"]
 
 
 def show_quiz(
     root, question, on_result, monitor_geometry=None, music_folder=None,
-    idle_music_minutes=3, total_yen=0, allowance_per_correct=0,
+    idle_music_minutes=10, total_yen=0, allowance_per_correct=0,
 ):
     win = tk.Toplevel(root)
     win.overrideredirect(True)
@@ -98,23 +97,13 @@ def show_quiz(
             music_job = None
         music.stop()
 
-    def schedule_next_song():
-        nonlocal music_job
-        music_job = win.after(int(idle_music_minutes * 60 * 1000), play_song_and_watch)
-
-    def watch_song():
-        nonlocal music_job
-        if music.is_playing():
-            music_job = win.after(SONG_POLL_MS, watch_song)
-        else:
-            # 曲が自然に終わっても未回答なら、また idle_music_minutes 後に再生する。
-            schedule_next_song()
-
-    def play_song_and_watch():
-        if music_folder and music.play_random(music_folder):
-            watch_song()
-        else:
-            schedule_next_song()
+    def play_idle_music():
+        # idle_music_minutes放置したら1回だけ再生する。曲が終わっても、
+        # この問題が未回答のままでも、この問題に対しては再度再生しない
+        # (次に別の出題画面が表示され、そこでまた idle_music_minutes
+        # 放置されたら、そちらで新たに1回再生される)。
+        if music_folder:
+            music.play_random(music_folder)
 
     def pulse_status(remaining):
         if remaining <= 0 or not win.winfo_exists():
@@ -168,6 +157,6 @@ def show_quiz(
     win.focus_force()
     entry.focus_set()
     ime_job = win.after(50, apply_ime_mode)
-    schedule_next_song()
+    music_job = win.after(int(idle_music_minutes * 60 * 1000), play_idle_music)
 
     return win
