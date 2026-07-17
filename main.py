@@ -1,4 +1,5 @@
 import argparse
+import os
 import traceback
 import tkinter as tk
 
@@ -43,6 +44,8 @@ def main():
     excel_data.ensure_sample_file(excel_path)
     scores_path = config_module.resolve_path("scores.json")
     monitor_geometry = monitors.resolve_monitor_geometry(args.monitor)
+    music_folder = config_module.resolve_path(config["music_folder"])
+    os.makedirs(music_folder, exist_ok=True)
 
     root = tk.Tk()
     root.withdraw()
@@ -50,7 +53,7 @@ def main():
 
     keyboard_block.install()
 
-    scheduler = Scheduler(root, config, excel_path, scores_path, monitor_geometry)
+    scheduler = Scheduler(root, config, excel_path, scores_path, monitor_geometry, music_folder)
 
     def on_exit():
         keyboard_block.uninstall()

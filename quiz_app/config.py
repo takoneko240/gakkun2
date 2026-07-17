@@ -9,6 +9,8 @@ DEFAULTS = {
     "multiplication_min": 2,
     "multiplication_max": 9,
     "categories": ["multiplication", "division", "kanji"],
+    "music_folder": "music",
+    "idle_music_minutes": 3,
 }
 
 

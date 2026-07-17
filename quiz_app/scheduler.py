@@ -5,13 +5,14 @@ RECHECK_MS = 5000
 
 
 class Scheduler:
-    def __init__(self, root, config, excel_path, scores_path, monitor_geometry=None):
+    def __init__(self, root, config, excel_path, scores_path, monitor_geometry=None, music_folder=None):
         self.root = root
         self.config = config
         self.excel_path = excel_path
         self.scores_path = scores_path
         self.scores = scores_module.load_scores(scores_path)
         self.monitor_geometry = monitor_geometry
+        self.music_folder = music_folder
         self.quiz_open = False
 
     def _pick_question(self):
@@ -22,7 +23,7 @@ class Scheduler:
         self._schedule_next_regular()
 
     def _schedule_next_regular(self):
-        interval_ms = self.config["interval_minutes"] * 60 * 1000
+        interval_ms = int(self.config["interval_minutes"] * 60 * 1000)
         self.root.after(interval_ms, self._trigger_regular)
 
     def _trigger_regular(self):
@@ -42,7 +43,14 @@ class Scheduler:
 
     def _open_quiz(self, question):
         self.quiz_open = True
-        quiz_window.show_quiz(self.root, question, self._on_result, self.monitor_geometry)
+        quiz_window.show_quiz(
+            self.root,
+            question,
+            self._on_result,
+            monitor_geometry=self.monitor_geometry,
+            music_folder=self.music_folder,
+            idle_music_minutes=self.config["idle_music_minutes"],
+        )
 
     def _on_result(self, correct, question):
         self.quiz_open = False
@@ -51,7 +59,7 @@ class Scheduler:
         scores_module.save_scores(self.scores_path, self.scores)
 
         if not correct:
-            retry_ms = self.config["retry_minutes"] * 60 * 1000
+            retry_ms = int(self.config["retry_minutes"] * 60 * 1000)
             self.root.after(retry_ms, lambda: self._trigger_retry(question))
 
     def force_quiz_now(self):

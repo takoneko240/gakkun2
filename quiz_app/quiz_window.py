@@ -1,7 +1,7 @@
 import tkinter as tk
 import tkinter.font as tkfont
 
-from . import ime_control, keyboard_block
+from . import ime_control, keyboard_block, music
 
 CATEGORY_LABELS = {
     "multiplication": "掛け算",
@@ -9,8 +9,10 @@ CATEGORY_LABELS = {
     "kanji": "漢字",
 }
 
+SONG_POLL_MS = 1000
 
-def show_quiz(root, question, on_result, monitor_geometry=None):
+
+def show_quiz(root, question, on_result, monitor_geometry=None, music_folder=None, idle_music_minutes=3):
     win = tk.Toplevel(root)
     win.overrideredirect(True)
     win.attributes("-topmost", True)
@@ -71,8 +73,39 @@ def show_quiz(root, question, on_result, monitor_geometry=None):
     )
     status_label.pack()
 
+    music_job = None
+
+    def stop_idle_music():
+        nonlocal music_job
+        if music_job is not None:
+            try:
+                win.after_cancel(music_job)
+            except Exception:
+                pass
+            music_job = None
+        music.stop()
+
+    def schedule_next_song():
+        nonlocal music_job
+        music_job = win.after(int(idle_music_minutes * 60 * 1000), play_song_and_watch)
+
+    def watch_song():
+        nonlocal music_job
+        if music.is_playing():
+            music_job = win.after(SONG_POLL_MS, watch_song)
+        else:
+            # 曲が自然に終わっても未回答なら、また idle_music_minutes 後に再生する。
+            schedule_next_song()
+
+    def play_song_and_watch():
+        if music_folder and music.play_random(music_folder):
+            watch_song()
+        else:
+            schedule_next_song()
+
     def close_and_report(correct):
         keyboard_block.set_blocking(False)
+        stop_idle_music()
         entry.unbind("<FocusIn>")
         try:
             win.after_cancel(ime_job)
@@ -84,6 +117,8 @@ def show_quiz(root, question, on_result, monitor_geometry=None):
     def submit(event=None):
         if entry.cget("state") == "disabled":
             return
+
+        stop_idle_music()
 
         answer = entry_var.get()
         correct = question.is_correct(answer)
@@ -109,5 +144,6 @@ def show_quiz(root, question, on_result, monitor_geometry=None):
     win.focus_force()
     entry.focus_set()
     ime_job = win.after(50, apply_ime_mode)
+    schedule_next_song()
 
     return win
