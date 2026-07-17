@@ -20,6 +20,7 @@ class Scheduler:
         self.allowance_path = allowance_path
         self.total_yen = allowance_module.load_total(allowance_path) if allowance_path else 0
         self.quiz_open = False
+        self.regular_episode_key = None
 
     def _pick_question(self):
         kanji_list = excel_data.load_kanji_list(self.excel_path)
@@ -37,8 +38,13 @@ class Scheduler:
             self.root.after(RECHECK_MS, self._trigger_regular)
             return
 
-        self._open_quiz(self._pick_question())
-        self._schedule_next_regular()
+        question = self._pick_question()
+        self.regular_episode_key = question.key
+        self._open_quiz(question)
+        # 次の5分後の予約は、このエピソード(誤答リトライを含む)が正解で
+        # 終わった時点で _on_result から行う。ここで即座に予約すると、
+        # 出題に気づくのが遅れたり誤答リトライが挟まったりした場合に、
+        # 実際に正解してから5分経たずに次の問題が出てしまう。
 
     def _trigger_retry(self, question):
         if self.quiz_open:
@@ -73,6 +79,9 @@ class Scheduler:
         if not correct:
             retry_ms = int(self.config["retry_minutes"] * 60 * 1000)
             self.root.after(retry_ms, lambda: self._trigger_retry(question))
+        elif question.key == self.regular_episode_key:
+            self.regular_episode_key = None
+            self._schedule_next_regular()
 
     def force_quiz_now(self):
         if self.quiz_open:
