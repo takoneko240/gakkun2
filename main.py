@@ -4,7 +4,7 @@ import traceback
 import tkinter as tk
 
 from quiz_app import config as config_module
-from quiz_app import excel_data, keyboard_block, monitors, tray
+from quiz_app import excel_data, keyboard_block, monitors, single_instance, tray
 from quiz_app.scheduler import Scheduler
 
 
@@ -39,6 +39,11 @@ def main():
             print(f"{i}: {m['width']}x{m['height']} at ({m['left']},{m['top']}){tag}")
         return
 
+    if not single_instance.acquire():
+        # 既に起動中。タスクスケジューラでの定期再起動などから呼ばれても
+        # ダイアログで止まらないよう、何も表示せず黙って終了する。
+        return
+
     config = config_module.load_config()
     excel_path = config_module.resolve_path(config["excel_path"])
     excel_data.ensure_sample_file(excel_path)
@@ -60,6 +65,7 @@ def main():
 
     def on_exit():
         keyboard_block.uninstall()
+        single_instance.release()
         root.quit()
 
     tray.start_tray(root, scheduler, on_exit)

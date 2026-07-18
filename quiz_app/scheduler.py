@@ -27,7 +27,7 @@ class Scheduler:
         return questions.pick_question(self.config, kanji_list, self.scores)
 
     def start(self):
-        self._schedule_next_regular()
+        self._trigger_regular()
 
     def _schedule_next_regular(self):
         interval_ms = int(self.config["interval_minutes"] * 60 * 1000)
