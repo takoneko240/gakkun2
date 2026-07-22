@@ -25,6 +25,8 @@ class Scheduler:
 
     def _pick_question(self):
         kanji_list = excel_data.load_kanji_list(self.excel_path)
+        if scores_module.prune_missing_kanji(self.scores, kanji_list):
+            scores_module.save_scores(self.scores_path, self.scores)
         return questions.pick_question(self.config, kanji_list, self.scores)
 
     def start(self):

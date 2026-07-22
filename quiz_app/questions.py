@@ -58,6 +58,11 @@ def _candidates_for_category(category, config, kanji_list):
     return list(_kanji_candidates(kanji_list))
 
 
+def _min_score_subset(group, scores):
+    min_score = min(scores[c[0]] for c in group)
+    return [c for c in group if scores[c[0]] == min_score]
+
+
 def pick_question(config, kanji_list, scores):
     categories = list(config["categories"])
     if "kanji" in categories and not kanji_list:
@@ -65,14 +70,28 @@ def pick_question(config, kanji_list, scores):
     if not categories:
         categories = ["multiplication"]
 
-    # カテゴリはまず均等にランダム選択し、その中で最低ポイントの問題を優先する。
+    # カテゴリはまず均等にランダム選択し、その中で出題対象を絞り込む。
     # 全問題を1つのプールにすると、問題数が多いカテゴリ（掛け算・割り算）に
     # 埋もれて漢字などが出にくくなるため、カテゴリ単位で分けている。
     category = random.choice(categories)
     candidates = _candidates_for_category(category, config, kanji_list)
 
-    min_score = min(scores.get(key, 0) for key, _, _, _ in candidates)
-    lowest = [c for c in candidates if scores.get(c[0], 0) == min_score]
+    # 出題対象を「解答済み（scores.jsonに記録あり）」と「未出題」に分ける。
+    # 解答済みの中に0点以下（要復習）のものがあれば、未出題より先にそちらを
+    # 優先し、その中でも最低点のものを優先する。未出題の問題は、解答済みが
+    # 全て1点以上（＝一巡して習得済み）になって初めて出題対象に入る。
+    scored = [c for c in candidates if c[0] in scores]
+    unscored = [c for c in candidates if c[0] not in scores]
+
+    needs_review = [c for c in scored if scores[c[0]] <= 0]
+    if needs_review:
+        lowest = _min_score_subset(needs_review, scores)
+    elif unscored:
+        lowest = unscored
+    elif scored:
+        lowest = _min_score_subset(scored, scores)
+    else:
+        lowest = candidates
 
     key, kind, a, b = random.choice(lowest)
     return _build_question(kind, key, a, b)
