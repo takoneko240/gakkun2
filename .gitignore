@@ -5,3 +5,4 @@ dist/
 *.spec
 scores.json
 allowance.json
+gakkun2.log*

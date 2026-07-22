@@ -1,10 +1,11 @@
 import argparse
 import os
-import traceback
+import sys
 import tkinter as tk
 
 from quiz_app import config as config_module
-from quiz_app import excel_data, keyboard_block, monitors, single_instance, tray
+from quiz_app import excel_data, monitors, single_instance, tray
+from quiz_app.applog import logger
 from quiz_app.scheduler import Scheduler
 
 
@@ -14,7 +15,15 @@ def _report_callback_exception(exc, val, tb):
     # which crashes tkinter's own cleanup with this benign AttributeError.
     if isinstance(val, AttributeError) and "_tclCommands" in str(val):
         return
-    traceback.print_exception(exc, val, tb)
+    logger.error("Tkinterコールバック内で例外が発生しました", exc_info=(exc, val, tb))
+
+
+def _excepthook(exc_type, exc_value, exc_tb):
+    logger.error("未処理の例外でプロセスが終了します", exc_info=(exc_type, exc_value, exc_tb))
+    sys.__excepthook__(exc_type, exc_value, exc_tb)
+
+
+sys.excepthook = _excepthook
 
 
 def parse_args():
@@ -42,7 +51,10 @@ def main():
     if not single_instance.acquire():
         # 既に起動中。タスクスケジューラでの定期再起動などから呼ばれても
         # ダイアログで止まらないよう、何も表示せず黙って終了する。
+        logger.info("既に起動中のインスタンスがあるため終了します")
         return
+
+    logger.info("gakkun2 起動")
 
     config = config_module.load_config()
     excel_path = config_module.resolve_path(config["excel_path"])
@@ -57,14 +69,12 @@ def main():
     root.withdraw()
     root.report_callback_exception = _report_callback_exception
 
-    keyboard_block.install()
-
     scheduler = Scheduler(
         root, config, excel_path, scores_path, monitor_geometry, music_folder, allowance_path,
     )
 
     def on_exit():
-        keyboard_block.uninstall()
+        logger.info("終了メニューから終了します")
         single_instance.release()
         root.quit()
 
@@ -73,6 +83,12 @@ def main():
     scheduler.start()
     root.mainloop()
 
+    logger.info("gakkun2 終了 (mainloopが終了しました)")
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        logger.exception("main()の実行中に例外が発生し、プロセスが終了します")
+        raise

@@ -1,7 +1,7 @@
 import tkinter as tk
 import tkinter.font as tkfont
 
-from . import celebration, ime_control, keyboard_block, music
+from . import celebration, ime_control, music
 
 CATEGORY_LABELS = {
     "multiplication": "掛け算",
@@ -28,12 +28,6 @@ def show_quiz(
         left, top = 0, 0
         screen_w, screen_h = win.winfo_screenwidth(), win.winfo_screenheight()
     win.geometry(f"{screen_w}x{screen_h}+{left}+{top}")
-
-    win.protocol("WM_DELETE_WINDOW", lambda: None)
-    win.bind("<Escape>", lambda e: "break")
-    win.bind("<Alt-F4>", lambda e: "break")
-
-    keyboard_block.set_blocking(True)
 
     money_font = tkfont.Font(family="Meiryo", size=24, weight="bold")
     category_font = tkfont.Font(family="Meiryo", size=22)
@@ -112,7 +106,6 @@ def show_quiz(
         win.after(150, lambda: pulse_status(remaining - 1))
 
     def close_and_report(correct):
-        keyboard_block.set_blocking(False)
         stop_idle_music()
         entry.unbind("<FocusIn>")
         try:

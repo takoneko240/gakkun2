@@ -1,6 +1,7 @@
 from . import allowance as allowance_module
 from . import excel_data, questions, quiz_window
 from . import scores as scores_module
+from .applog import logger
 
 RECHECK_MS = 5000
 
@@ -40,6 +41,7 @@ class Scheduler:
 
         question = self._pick_question()
         self.regular_episode_key = question.key
+        logger.info("定期出題: %s %s", question.kind, question.key)
         self._open_quiz(question)
         # 次の5分後の予約は、このエピソード(誤答リトライを含む)が正解で
         # 終わった時点で _on_result から行う。ここで即座に予約すると、
@@ -51,6 +53,7 @@ class Scheduler:
             self.root.after(RECHECK_MS, lambda: self._trigger_retry(question))
             return
 
+        logger.info("誤答リトライ出題: %s %s", question.kind, question.key)
         self._open_quiz(question)
 
     def _open_quiz(self, question):
@@ -68,6 +71,7 @@ class Scheduler:
 
     def _on_result(self, correct, question):
         self.quiz_open = False
+        logger.info("回答結果: %s %s -> %s", question.kind, question.key, "正解" if correct else "不正解")
 
         scores_module.apply_result(self.scores, question.key, correct)
         scores_module.save_scores(self.scores_path, self.scores)
@@ -86,4 +90,6 @@ class Scheduler:
     def force_quiz_now(self):
         if self.quiz_open:
             return
-        self._open_quiz(self._pick_question())
+        question = self._pick_question()
+        logger.info("強制出題(テスト): %s %s", question.kind, question.key)
+        self._open_quiz(question)
