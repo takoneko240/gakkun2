@@ -46,23 +46,29 @@ def show_quiz(
     container = tk.Frame(win, bg="#111827")
     container.place(relx=0.5, rely=0.5, anchor="center")
 
+    category_text = CATEGORY_LABELS.get(question.kind, "")
+    if question.level is not None:
+        category_text += f"  レベル{question.level}"
     tk.Label(
         container,
-        text=CATEGORY_LABELS.get(question.kind, ""),
+        text=category_text,
         font=category_font,
         fg="#9CA3AF",
         bg="#111827",
     ).pack(pady=(0, 12))
 
-    tk.Label(
-        container,
-        text=question.prompt,
-        font=prompt_font,
-        fg="#F9FAFB",
-        bg="#111827",
-        wraplength=int(screen_w * 0.8),
-        justify="center",
-    ).pack(pady=(0, 24))
+    if question.sentence:
+        _build_sentence(container, question.sentence, prompt_font, screen_w)
+    else:
+        tk.Label(
+            container,
+            text=question.prompt,
+            font=prompt_font,
+            fg="#F9FAFB",
+            bg="#111827",
+            wraplength=int(screen_w * 0.8),
+            justify="center",
+        ).pack(pady=(0, 24))
 
     entry_var = tk.StringVar()
     entry = tk.Entry(
@@ -105,6 +111,10 @@ def show_quiz(
         status_label.configure(fg=CELEBRATE_COLORS[remaining % len(CELEBRATE_COLORS)])
         win.after(150, lambda: pulse_status(remaining - 1))
 
+    # 間違えた（空欄を含む）ときは正解を表示し、その正解を自分で入力するまで
+    # 画面を閉じられないようにする。空欄エンターで画面を消す「さぼり」対策。
+    copy_mode = False
+
     def close_and_report(correct):
         stop_idle_music()
         entry.unbind("<FocusIn>")
@@ -116,16 +126,30 @@ def show_quiz(
         on_result(correct, question)
 
     def submit(event=None):
+        nonlocal copy_mode, music_job
         if entry.cget("state") == "disabled":
+            return
+
+        answer = entry_var.get()
+        correct = question.is_correct(answer)
+
+        if copy_mode:
+            if correct:
+                entry.configure(state="disabled")
+                stop_idle_music()
+                status_label.configure(text="よく できました！ つぎは がんばろう", fg="#60A5FA")
+                win.after(1500, lambda: close_and_report(False))
+            else:
+                entry_var.set("")
+                status_label.configure(
+                    text=f"「{question.answer}」と 入力してね", fg="#F87171"
+                )
             return
 
         stop_idle_music()
 
-        answer = entry_var.get()
-        correct = question.is_correct(answer)
-        entry.configure(state="disabled")
-
         if correct:
+            entry.configure(state="disabled")
             celebrate_font = tkfont.Font(family="Meiryo", size=44, weight="bold")
             status_label.configure(text="🎉 正解！ 🎉", font=celebrate_font, fg=CELEBRATE_COLORS[0])
             money_var.set(f"獲得金額: {total_yen + allowance_per_correct}円")
@@ -134,16 +158,22 @@ def show_quiz(
             pulse_status(18)
             win.after(3000, lambda: close_and_report(True))
         else:
+            copy_mode = True
+            entry_var.set("")
+            heading = "わからない ときは こたえを みて おぼえよう" if not answer.strip() else "ざんねん…"
             status_label.configure(
-                text=f"不正解… 正解は「{question.answer}」", fg="#F87171"
+                text=f"{heading}\nこたえは「{question.answer}」\nおなじように 入力して エンターを おしてね",
+                fg="#F87171",
             )
-            win.after(2000, lambda: close_and_report(False))
+            music_job = win.after(int(idle_music_minutes * 60 * 1000), play_idle_music)
 
     japanese_ime = question.kind == "kanji"
 
     def apply_ime_mode(event=None):
         ime_control.set_mode(entry.winfo_id(), japanese_ime)
 
+    # Alt+F4 などで出題画面だけが消えないようにする。
+    win.protocol("WM_DELETE_WINDOW", lambda: None)
     entry.bind("<Return>", submit)
     entry.bind("<FocusIn>", apply_ime_mode)
     win.lift()
@@ -153,3 +183,35 @@ def show_quiz(
     music_job = win.after(int(idle_music_minutes * 60 * 1000), play_idle_music)
 
     return win
+
+
+def _build_sentence(parent, sentence, base_font, screen_w):
+    """例文を表示し、読ませる語にだけ下線を引いて目立たせる。"""
+    before, target, after = sentence
+    size = base_font.cget("size")
+    font = tkfont.Font(family="Meiryo", size=size, weight="bold")
+    while font.measure(before + target + after) > screen_w * 0.9 and size > 20:
+        size -= 2
+        font.configure(size=size)
+    target_font = tkfont.Font(family="Meiryo", size=size, weight="bold", underline=True)
+
+    row = tk.Frame(parent, bg="#111827")
+    row.pack(pady=(0, 16))
+    for text, part_font, color in (
+        (before, font, "#F9FAFB"),
+        (target, target_font, "#FBBF24"),
+        (after, font, "#F9FAFB"),
+    ):
+        if text:
+            tk.Label(
+                row, text=text, font=part_font, fg=color, bg="#111827", padx=0, bd=0,
+            ).pack(side="left")
+
+    hint_font = tkfont.Font(family="Meiryo", size=22)
+    tk.Label(
+        parent,
+        text="せんを ひいた ことばの 読みを ひらがなで 入力してね",
+        font=hint_font,
+        fg="#9CA3AF",
+        bg="#111827",
+    ).pack(pady=(0, 24))

@@ -1,9 +1,12 @@
+from collections import deque
+
 from . import allowance as allowance_module
 from . import excel_data, questions, quiz_window
 from . import scores as scores_module
 from .applog import logger
 
 RECHECK_MS = 5000
+RECENT_HISTORY = 5
 
 
 class Scheduler:
@@ -22,12 +25,17 @@ class Scheduler:
         self.total_yen = allowance_module.load_total(allowance_path) if allowance_path else 0
         self.quiz_open = False
         self.regular_episode_key = None
+        self.recent_keys = deque(maxlen=RECENT_HISTORY)
 
     def _pick_question(self):
         kanji_list = excel_data.load_kanji_list(self.excel_path)
         if scores_module.prune_missing_kanji(self.scores, kanji_list):
             scores_module.save_scores(self.scores_path, self.scores)
-        return questions.pick_question(self.config, kanji_list, self.scores)
+        question = questions.pick_question(
+            self.config, kanji_list, self.scores, recent_keys=self.recent_keys,
+        )
+        self.recent_keys.append(question.key)
+        return question
 
     def start(self):
         self._trigger_regular()
@@ -88,6 +96,12 @@ class Scheduler:
         elif question.key == self.regular_episode_key:
             self.regular_episode_key = None
             self._schedule_next_regular()
+
+    def withdraw(self):
+        logger.info("出金: %d円", self.total_yen)
+        self.total_yen = 0
+        if self.allowance_path:
+            allowance_module.save_total(self.allowance_path, self.total_yen)
 
     def force_quiz_now(self):
         if self.quiz_open:

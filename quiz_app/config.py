@@ -12,6 +12,10 @@ DEFAULTS = {
     "music_folder": "music",
     "idle_music_minutes": 10,
     "allowance_per_correct": 2,
+    # 漢字は易しいレベルから出題し、そのレベルの問題の level_up_ratio 以上が
+    # mastery_score 点以上になったら次のレベルを出題対象に加える。
+    "mastery_score": 1,
+    "level_up_ratio": 0.8,
 }
 
 
