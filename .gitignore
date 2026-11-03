@@ -5,4 +5,5 @@ dist/
 *.spec
 scores.json
 allowance.json
+wait_state.json
 gakkun2.log*

@@ -12,6 +12,13 @@ DEFAULTS = {
     "music_folder": "music",
     "idle_music_minutes": 10,
     "allowance_per_correct": 2,
+    # カテゴリの出題比率（相対値）。ここに無いカテゴリは 1 として扱う。
+    "category_weights": {"multiplication": 1, "division": 1, "kanji": 2},
+    # 誤答時は正解を表示したまま、待ち時間がたつまで書き写しの入力を受け付けない。
+    # 待ち時間は誤答のたびに +step、正解のたびに -step（min〜max の範囲）。
+    "wrong_wait_min_seconds": 10,
+    "wrong_wait_max_seconds": 60,
+    "wrong_wait_step_seconds": 5,
     # 漢字は易しいレベルから出題し、そのレベルの問題の level_up_ratio 以上が
     # mastery_score 点以上になったら次のレベルを出題対象に加える。
     "mastery_score": 1,

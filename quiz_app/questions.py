@@ -4,6 +4,13 @@ FULLWIDTH_DIGITS = "０１２３４５６７８９"
 HALFWIDTH_DIGITS = "0123456789"
 _DIGIT_TRANSLATION = str.maketrans(FULLWIDTH_DIGITS, HALFWIDTH_DIGITS)
 _KATAKANA_TO_HIRAGANA = {code: code - 0x60 for code in range(ord("ァ"), ord("ヶ") + 1)}
+_HIRAGANA_TO_KATAKANA = {code: code + 0x60 for code in range(ord("ぁ"), ord("ゖ") + 1)}
+
+KANJI_KINDS = ("kanji", "kanji_write")
+
+
+def to_katakana(text):
+    return text.translate(_HIRAGANA_TO_KATAKANA)
 
 
 def _normalize_kana(text):
@@ -27,6 +34,8 @@ class Question:
     def is_correct(self, user_input):
         if self.kind == "kanji":
             return _normalize_kana(user_input) in self.answers
+        if self.kind == "kanji_write":
+            return "".join(user_input.split()) in self.answers
 
         normalized = user_input.strip().translate(_DIGIT_TRANSLATION)
         return normalized in self.answers
@@ -55,6 +64,15 @@ def _build_question(key, payload):
         _, divisor, quotient = payload
         return Question(kind, key, f"{divisor * quotient} ÷ {divisor} = ?", [str(quotient)])
 
+    if kind == "kanji_write":
+        # 線を引く語を読み（カタカナ）にして見せ、漢字で書かせる。
+        _, entry, more_kanji_forms = payload
+        shown = to_katakana(entry.readings[0])
+        return Question(
+            kind, key, f"{entry.before}［{shown}］{entry.after}",
+            [entry.target, *more_kanji_forms],
+            level=entry.level, sentence=(entry.before, shown, entry.after),
+        )
     _, entry = payload
     return Question(
         kind, key, f"{entry.before}［{entry.target}］{entry.after}", entry.readings,
@@ -80,6 +98,29 @@ def current_kanji_level(kanji_list, scores, config):
     return levels[-1] if levels else None
 
 
+def _kanji_chars(text):
+    return {ch for ch in text if ch == "々" or "一" <= ch <= "鿿"}
+
+
+def _more_kanji_forms(entry, kanji_list):
+    """同じ読みで、より多く漢字を使った書き方（例: 月よう日 → 月曜日）を返す。
+
+    IME で変換すると交ぜ書きにならないので、書き取りではこれらも正解にする。
+    同音の別の語（花/鼻）は漢字が含まれないので正解にならない。
+    """
+    chars = _kanji_chars(entry.target)
+    forms = []
+    for other in kanji_list:
+        if (
+            other.readings[0] == entry.readings[0]
+            and other.target != entry.target
+            and other.target not in forms
+            and chars < _kanji_chars(other.target)
+        ):
+            forms.append(other.target)
+    return forms
+
+
 def _kanji_candidates(kanji_list, scores, config):
     level = current_kanji_level(kanji_list, scores, config)
     # 同じ語・読みの例文が複数ある場合は、例文をランダムに1つ選ぶ。
@@ -89,6 +130,12 @@ def _kanji_candidates(kanji_list, scores, config):
             by_key.setdefault(entry.key, []).append(entry)
     for key, entries in by_key.items():
         yield key, ("kanji", random.choice(entries))
+        # 書き取りは、読みを習得した語だけを出題する（読めない字は書けないため）。
+        if _is_mastered(key, scores, config):
+            yield entries[0].write_key, (
+                "kanji_write", random.choice(entries),
+                _more_kanji_forms(entries[0], kanji_list),
+            )
 
 
 def _weight(key, scores):
@@ -114,10 +161,13 @@ def pick_question(config, kanji_list, scores, recent_keys=()):
     if not categories:
         categories = ["multiplication"]
 
-    # カテゴリはまず均等にランダム選択し、その中で出題対象を絞り込む。
-    # 全問題を1つのプールにすると、問題数が多いカテゴリ（掛け算・割り算）に
+    # カテゴリはまず category_weights の比率でランダム選択し、その中で出題対象を
+    # 絞り込む。全問題を1つのプールにすると、問題数が多いカテゴリ（掛け算・割り算）に
     # 埋もれて漢字などが出にくくなるため、カテゴリ単位で分けている。
-    category = random.choice(categories)
+    category_weights = config.get("category_weights") or {}
+    category = random.choices(
+        categories, weights=[category_weights.get(c, 1) for c in categories],
+    )[0]
     if category == "multiplication":
         candidates = list(_multiplication_candidates(config))
     elif category == "division":

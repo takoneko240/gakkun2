@@ -6,7 +6,8 @@ from . import celebration, ime_control, music
 CATEGORY_LABELS = {
     "multiplication": "掛け算",
     "division": "割り算",
-    "kanji": "漢字",
+    "kanji": "漢字（よみ）",
+    "kanji_write": "漢字（かき）",
 }
 
 CELEBRATE_COLORS = ["#34D399", "#FBBF24", "#60A5FA", "#F472B6"]
@@ -15,6 +16,7 @@ CELEBRATE_COLORS = ["#34D399", "#FBBF24", "#60A5FA", "#F472B6"]
 def show_quiz(
     root, question, on_result, monitor_geometry=None, music_folder=None,
     idle_music_minutes=10, total_yen=0, allowance_per_correct=0,
+    wrong_wait_seconds=10,
 ):
     win = tk.Toplevel(root)
     win.overrideredirect(True)
@@ -58,7 +60,7 @@ def show_quiz(
     ).pack(pady=(0, 12))
 
     if question.sentence:
-        _build_sentence(container, question.sentence, prompt_font, screen_w)
+        _build_sentence(container, question.sentence, prompt_font, screen_w, question.kind)
     else:
         tk.Label(
             container,
@@ -158,16 +160,38 @@ def show_quiz(
             pulse_status(18)
             win.after(3000, lambda: close_and_report(True))
         else:
+            # 誤答時は正解を表示したまま wrong_wait_seconds 待たせてから書き写させる。
+            # すぐ誤答して答えを見る方が早く画面を閉じられる「さぼり」対策。
             copy_mode = True
             entry_var.set("")
+            entry.configure(state="disabled")
             heading = "わからない ときは こたえを みて おぼえよう" if not answer.strip() else "ざんねん…"
-            status_label.configure(
-                text=f"{heading}\nこたえは「{question.answer}」\nおなじように 入力して エンターを おしてね",
-                fg="#F87171",
-            )
+            if music_folder:
+                music.play_wait(music_folder)
+            show_answer_countdown(heading, int(wrong_wait_seconds))
             music_job = win.after(int(idle_music_minutes * 60 * 1000), play_idle_music)
 
-    japanese_ime = question.kind == "kanji"
+    def show_answer_countdown(heading, remaining):
+        if not win.winfo_exists():
+            return
+        if remaining > 0:
+            status_label.configure(
+                text=f"{heading}\nこたえは「{question.answer}」\nあと {remaining}びょう まってね",
+                fg="#F87171",
+            )
+            win.after(1000, lambda: show_answer_countdown(heading, remaining - 1))
+            return
+        status_label.configure(
+            text=f"{heading}\nこたえは「{question.answer}」\nおなじように 入力して エンターを おしてね",
+            fg="#F87171",
+        )
+        # 待ち時間が終わったら wait.mp3 も止める。
+        music.stop()
+        entry.configure(state="normal")
+        entry.focus_set()
+        apply_ime_mode()
+
+    japanese_ime = question.kind in ("kanji", "kanji_write")
 
     def apply_ime_mode(event=None):
         ime_control.set_mode(entry.winfo_id(), japanese_ime)
@@ -185,7 +209,7 @@ def show_quiz(
     return win
 
 
-def _build_sentence(parent, sentence, base_font, screen_w):
+def _build_sentence(parent, sentence, base_font, screen_w, kind="kanji"):
     """例文を表示し、読ませる語にだけ下線を引いて目立たせる。"""
     before, target, after = sentence
     size = base_font.cget("size")
@@ -210,7 +234,11 @@ def _build_sentence(parent, sentence, base_font, screen_w):
     hint_font = tkfont.Font(family="Meiryo", size=22)
     tk.Label(
         parent,
-        text="せんを ひいた ことばの 読みを ひらがなで 入力してね",
+        text=(
+            "せんを ひいた カタカナの ことばを 漢字で 入力してね"
+            if kind == "kanji_write"
+            else "せんを ひいた ことばの 読みを ひらがなで 入力してね"
+        ),
         font=hint_font,
         fg="#9CA3AF",
         bg="#111827",

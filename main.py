@@ -64,6 +64,7 @@ def main():
     music_folder = config_module.resolve_path(config["music_folder"])
     os.makedirs(music_folder, exist_ok=True)
     allowance_path = config_module.resolve_path("allowance.json")
+    wait_state_path = config_module.resolve_path("wait_state.json")
 
     root = tk.Tk()
     root.withdraw()
@@ -71,6 +72,7 @@ def main():
 
     scheduler = Scheduler(
         root, config, excel_path, scores_path, monitor_geometry, music_folder, allowance_path,
+        wait_state_path,
     )
 
     def on_exit():

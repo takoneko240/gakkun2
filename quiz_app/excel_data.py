@@ -30,6 +30,11 @@ class KanjiEntry:
         # 「語＋読み」でキーを作る。
         return f"kanji:{self.target}:{self.readings[0]}"
 
+    @property
+    def write_key(self):
+        # 書き取り問題（読みをカタカナで見せて漢字で書かせる）のキー。
+        return f"kanji_write:{self.target}:{self.readings[0]}"
+
 
 def ensure_sample_file(path):
     if os.path.exists(path):

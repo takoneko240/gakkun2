@@ -3,6 +3,7 @@ from collections import deque
 from . import allowance as allowance_module
 from . import excel_data, questions, quiz_window
 from . import scores as scores_module
+from . import wait_state
 from .applog import logger
 
 RECHECK_MS = 5000
@@ -12,7 +13,7 @@ RECENT_HISTORY = 5
 class Scheduler:
     def __init__(
         self, root, config, excel_path, scores_path, monitor_geometry=None,
-        music_folder=None, allowance_path=None,
+        music_folder=None, allowance_path=None, wait_state_path=None,
     ):
         self.root = root
         self.config = config
@@ -23,6 +24,11 @@ class Scheduler:
         self.music_folder = music_folder
         self.allowance_path = allowance_path
         self.total_yen = allowance_module.load_total(allowance_path) if allowance_path else 0
+        self.wait_state_path = wait_state_path
+        min_wait = self.config["wrong_wait_min_seconds"]
+        self.wrong_wait_seconds = self._clamp_wrong_wait(
+            wait_state.load_wait_seconds(wait_state_path, min_wait) if wait_state_path else min_wait,
+        )
         self.quiz_open = False
         self.regular_episode_key = None
         self.recent_keys = deque(maxlen=RECENT_HISTORY)
@@ -77,6 +83,7 @@ class Scheduler:
             idle_music_minutes=self.config["idle_music_minutes"],
             total_yen=self.total_yen,
             allowance_per_correct=self.config["allowance_per_correct"],
+            wrong_wait_seconds=self.wrong_wait_seconds,
         )
 
     def _on_result(self, correct, question):
@@ -90,12 +97,30 @@ class Scheduler:
             self.total_yen += self.config["allowance_per_correct"]
             allowance_module.save_total(self.allowance_path, self.total_yen)
 
+        self._update_wrong_wait(correct)
+
         if not correct:
             retry_ms = int(self.config["retry_minutes"] * 60 * 1000)
             self.root.after(retry_ms, lambda: self._trigger_retry(question))
         elif question.key == self.regular_episode_key:
             self.regular_episode_key = None
             self._schedule_next_regular()
+
+    def _clamp_wrong_wait(self, seconds):
+        return max(
+            self.config["wrong_wait_min_seconds"],
+            min(self.config["wrong_wait_max_seconds"], seconds),
+        )
+
+    def _update_wrong_wait(self, correct):
+        # 今回の誤答の待ち時間は表示済みなので、次の誤答から反映される。
+        step = self.config["wrong_wait_step_seconds"]
+        self.wrong_wait_seconds = self._clamp_wrong_wait(
+            self.wrong_wait_seconds + (-step if correct else step),
+        )
+        logger.info("誤答時の待ち時間: %d秒", self.wrong_wait_seconds)
+        if self.wait_state_path:
+            wait_state.save_wait_seconds(self.wait_state_path, self.wrong_wait_seconds)
 
     def withdraw(self):
         logger.info("出金: %d円", self.total_yen)

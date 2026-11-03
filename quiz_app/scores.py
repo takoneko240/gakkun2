@@ -26,9 +26,10 @@ def apply_result(scores, key, correct):
 
 def prune_missing_kanji(scores, kanji_list):
     valid_keys = {entry.key for entry in kanji_list}
+    valid_keys |= {entry.write_key for entry in kanji_list}
     stale_keys = [
         key for key in scores
-        if key.startswith("kanji:") and key not in valid_keys
+        if key.startswith(("kanji:", "kanji_write:")) and key not in valid_keys
     ]
     for key in stale_keys:
         del scores[key]
