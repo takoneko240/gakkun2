@@ -13,6 +13,8 @@ DEFAULTS = {
     "idle_music_minutes": 10,
     "allowance_per_correct": 2,
     # カテゴリの出題比率（相対値）。ここに無いカテゴリは 1 として扱う。
+    # 掛け算・割り算は、答えたあと（正解でも不正解でも）九九を読み上げる。
+    "speak_math_answer": True,
     "category_weights": {"multiplication": 1, "division": 1, "kanji": 2},
     # 誤答時は正解を表示したまま、待ち時間がたつまで書き写しの入力を受け付けない。
     # 待ち時間は誤答のたびに +step、正解のたびに -step（min〜max の範囲）。

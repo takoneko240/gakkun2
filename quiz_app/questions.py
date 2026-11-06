@@ -1,5 +1,7 @@
 import random
 
+from .speech import multiplication_reading
+
 FULLWIDTH_DIGITS = "０１２３４５６７８９"
 HALFWIDTH_DIGITS = "0123456789"
 _DIGIT_TRANSLATION = str.maketrans(FULLWIDTH_DIGITS, HALFWIDTH_DIGITS)
@@ -18,7 +20,7 @@ def _normalize_kana(text):
 
 
 class Question:
-    def __init__(self, kind, key, prompt, answers, level=None, sentence=None):
+    def __init__(self, kind, key, prompt, answers, level=None, sentence=None, reading=None):
         self.kind = kind
         self.key = key
         self.prompt = prompt
@@ -26,6 +28,8 @@ class Question:
         self.level = level
         # 漢字問題のみ: (線より前, 線を引く語, 線より後)
         self.sentence = sentence
+        # 算数のみ: 答えたあとに読み上げる九九（割り算も掛け算の形で読む）
+        self.reading = reading
 
     @property
     def answer(self):
@@ -59,10 +63,12 @@ def _build_question(key, payload):
     kind = payload[0]
     if kind == "multiplication":
         _, a, b = payload
-        return Question(kind, key, f"{a} × {b} = ?", [str(a * b)])
+        return Question(kind, key, f"{a} × {b} = ?", [str(a * b)],
+                        reading=multiplication_reading(a, b))
     if kind == "division":
         _, divisor, quotient = payload
-        return Question(kind, key, f"{divisor * quotient} ÷ {divisor} = ?", [str(quotient)])
+        return Question(kind, key, f"{divisor * quotient} ÷ {divisor} = ?", [str(quotient)],
+                        reading=multiplication_reading(divisor, quotient))
 
     if kind == "kanji_write":
         # 線を引く語を読み（カタカナ）にして見せ、漢字で書かせる。

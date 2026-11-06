@@ -30,6 +30,7 @@ python install_autostart.py    # スタートアップ登録（dist/Gakkun2.exe 
 | `quiz_app/tray.py` | トレイメニュー（今すぐ出題・出金・終了[パスワード付き]） |
 | `quiz_app/config.py` | `config.json` の読み込み。`DEFAULTS` にマージされるので新しい設定は `DEFAULTS` に追加する |
 | `quiz_app/ime_control.py` | 漢字問題では IME をオン、算数ではオフにする |
+| `quiz_app/speech.py` | 掛け算・割り算の答えた後に九九を SAPI（Haruka）で読み上げ（割り算も「除数 かける 商 は 被除数」）。`speak_math_answer` で切替。誤答時は読み終わってから wait.mp3 |
 | `quiz_app/music.py`, `celebration.py` | 放置時の音楽、正解時の効果音・紙吹雪 |
 
 ## データ

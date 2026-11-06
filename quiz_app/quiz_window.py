@@ -1,7 +1,7 @@
 import tkinter as tk
 import tkinter.font as tkfont
 
-from . import celebration, ime_control, music
+from . import celebration, ime_control, music, speech
 
 CATEGORY_LABELS = {
     "multiplication": "掛け算",
@@ -16,7 +16,7 @@ CELEBRATE_COLORS = ["#34D399", "#FBBF24", "#60A5FA", "#F472B6"]
 def show_quiz(
     root, question, on_result, monitor_geometry=None, music_folder=None,
     idle_music_minutes=10, total_yen=0, allowance_per_correct=0,
-    wrong_wait_seconds=10,
+    wrong_wait_seconds=10, speak_answer=True,
 ):
     win = tk.Toplevel(root)
     win.overrideredirect(True)
@@ -117,6 +117,8 @@ def show_quiz(
     # 画面を閉じられないようにする。空欄エンターで画面を消す「さぼり」対策。
     copy_mode = False
 
+    reading = question.reading if speak_answer else None
+
     def close_and_report(correct):
         stop_idle_music()
         entry.unbind("<FocusIn>")
@@ -158,6 +160,10 @@ def show_quiz(
             celebration.play_chime()
             celebration.burst_confetti(confetti_canvas, screen_w, screen_h, duration_ms=2800)
             pulse_status(18)
+            if reading:
+                # 効果音と重ならないよう少し待ってから読み上げる。
+                # 読み終わる前に画面が閉じても読み上げは最後まで続く。
+                win.after(900, lambda: speech.speak(reading))
             win.after(3000, lambda: close_and_report(True))
         else:
             # 誤答時は正解を表示したまま wrong_wait_seconds 待たせてから書き写させる。
@@ -166,10 +172,18 @@ def show_quiz(
             entry_var.set("")
             entry.configure(state="disabled")
             heading = "わからない ときは こたえを みて おぼえよう" if not answer.strip() else "ざんねん…"
-            if music_folder:
+            if reading:
+                # 九九を読み上げ終わってから待ち時間の曲を流す（声と曲が重ならないように）。
+                speech.speak(reading, win, start_wait_music)
+            elif music_folder:
                 music.play_wait(music_folder)
             show_answer_countdown(heading, int(wrong_wait_seconds))
             music_job = win.after(int(idle_music_minutes * 60 * 1000), play_idle_music)
+
+    def start_wait_music():
+        # 読み上げ中に待ち時間が終わっていたら（入力できる状態なら）もう流さない。
+        if music_folder and win.winfo_exists() and entry.cget("state") == "disabled":
+            music.play_wait(music_folder)
 
     def show_answer_countdown(heading, remaining):
         if not win.winfo_exists():
