@@ -8,14 +8,22 @@ DEFAULTS = {
     "retry_minutes": 1,
     "multiplication_min": 2,
     "multiplication_max": 9,
-    "categories": ["multiplication", "division", "kanji"],
+    "categories": ["multiplication", "division", "addsub", "kanji"],
+    # 3つの数のたし算・ひき算（addsub）。各数は min〜max、とちゅうと答えは 0〜max_result。
+    "addsub_min_number": 1,
+    "addsub_max_number": 9,
+    "addsub_max_result": 20,
+    # 算数は答えたあと（正解でも不正解でも）式をブロックで見せる。
+    # 正解のときは、ブロックを描き終えてから block_view_seconds 秒たって画面を閉じる。
+    "show_blocks": True,
+    "block_view_seconds": 4,
     "music_folder": "music",
     "idle_music_minutes": 10,
     "allowance_per_correct": 2,
     # カテゴリの出題比率（相対値）。ここに無いカテゴリは 1 として扱う。
     # 掛け算・割り算は、答えたあと（正解でも不正解でも）九九を読み上げる。
     "speak_math_answer": True,
-    "category_weights": {"multiplication": 1, "division": 1, "kanji": 2},
+    "category_weights": {"multiplication": 1, "division": 1, "addsub": 1, "kanji": 2},
     # 誤答時は正解を表示したまま、待ち時間がたつまで書き写しの入力を受け付けない。
     # 待ち時間は誤答のたびに +step、正解のたびに -step（min〜max の範囲）。
     "wrong_wait_min_seconds": 10,

@@ -85,6 +85,8 @@ class Scheduler:
             allowance_per_correct=self.config["allowance_per_correct"],
             wrong_wait_seconds=self.wrong_wait_seconds,
             speak_answer=self.config["speak_math_answer"],
+            show_blocks=self.config["show_blocks"],
+            block_view_seconds=self.config["block_view_seconds"],
         )
 
     def _on_result(self, correct, question):

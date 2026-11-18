@@ -1,6 +1,6 @@
 import random
 
-from .speech import multiplication_reading
+from .speech import addsub_reading, multiplication_reading
 
 FULLWIDTH_DIGITS = "０１２３４５６７８９"
 HALFWIDTH_DIGITS = "0123456789"
@@ -20,7 +20,9 @@ def _normalize_kana(text):
 
 
 class Question:
-    def __init__(self, kind, key, prompt, answers, level=None, sentence=None, reading=None):
+    def __init__(
+        self, kind, key, prompt, answers, level=None, sentence=None, reading=None, blocks=None,
+    ):
         self.kind = kind
         self.key = key
         self.prompt = prompt
@@ -30,6 +32,8 @@ class Question:
         self.sentence = sentence
         # 算数のみ: 答えたあとに読み上げる九九（割り算も掛け算の形で読む）
         self.reading = reading
+        # 算数のみ: 答えたあとにブロックで見せる式（blocks.py が描く）
+        self.blocks = blocks
 
     @property
     def answer(self):
@@ -59,16 +63,48 @@ def _division_candidates(config):
             yield f"division:{divisor}:{quotient}", ("division", divisor, quotient)
 
 
+def _addsub_candidates(config):
+    """3つの数のたし算・ひき算（例: 9 - 3 + 5）。左から順に計算する。
+
+    とちゅうの答えも最後の答えも 0〜addsub_max_result の範囲に収まるものだけを出す。
+    """
+    lo, hi = config["addsub_min_number"], config["addsub_max_number"]
+    limit = config["addsub_max_result"]
+    numbers = range(lo, hi + 1)
+    for a in numbers:
+        for op1 in "+-":
+            for b in numbers:
+                middle = a + b if op1 == "+" else a - b
+                if not 0 <= middle <= limit:
+                    continue
+                for op2 in "+-":
+                    for c in numbers:
+                        result = middle + c if op2 == "+" else middle - c
+                        if 0 <= result <= limit:
+                            yield f"addsub:{a}{op1}{b}{op2}{c}", ("addsub", a, op1, b, op2, c)
+
+
+_OP_SIGNS = {"+": "＋", "-": "−"}
+
+
 def _build_question(key, payload):
     kind = payload[0]
     if kind == "multiplication":
         _, a, b = payload
         return Question(kind, key, f"{a} × {b} = ?", [str(a * b)],
-                        reading=multiplication_reading(a, b))
+                        reading=multiplication_reading(a, b), blocks=payload)
     if kind == "division":
         _, divisor, quotient = payload
         return Question(kind, key, f"{divisor * quotient} ÷ {divisor} = ?", [str(quotient)],
-                        reading=multiplication_reading(divisor, quotient))
+                        reading=multiplication_reading(divisor, quotient), blocks=payload)
+    if kind == "addsub":
+        _, a, op1, b, op2, c = payload
+        middle = a + b if op1 == "+" else a - b
+        result = middle + c if op2 == "+" else middle - c
+        return Question(
+            kind, key, f"{a} {_OP_SIGNS[op1]} {b} {_OP_SIGNS[op2]} {c} = ?", [str(result)],
+            reading=addsub_reading(a, op1, b, op2, c, result), blocks=payload,
+        )
 
     if kind == "kanji_write":
         # 線を引く語を読み（カタカナ）にして見せ、漢字で書かせる。
@@ -178,6 +214,8 @@ def pick_question(config, kanji_list, scores, recent_keys=()):
         candidates = list(_multiplication_candidates(config))
     elif category == "division":
         candidates = list(_division_candidates(config))
+    elif category == "addsub":
+        candidates = list(_addsub_candidates(config))
     else:
         candidates = list(_kanji_candidates(kanji_list, scores, config))
 

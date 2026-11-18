@@ -1,11 +1,12 @@
 import tkinter as tk
 import tkinter.font as tkfont
 
-from . import celebration, ime_control, music, speech
+from . import blocks, celebration, ime_control, music, speech
 
 CATEGORY_LABELS = {
     "multiplication": "掛け算",
     "division": "割り算",
+    "addsub": "たし算・ひき算",
     "kanji": "漢字（よみ）",
     "kanji_write": "漢字（かき）",
 }
@@ -16,7 +17,7 @@ CELEBRATE_COLORS = ["#34D399", "#FBBF24", "#60A5FA", "#F472B6"]
 def show_quiz(
     root, question, on_result, monitor_geometry=None, music_folder=None,
     idle_music_minutes=10, total_yen=0, allowance_per_correct=0,
-    wrong_wait_seconds=10, speak_answer=True,
+    wrong_wait_seconds=10, speak_answer=True, show_blocks=True, block_view_seconds=4,
 ):
     win = tk.Toplevel(root)
     win.overrideredirect(True)
@@ -86,6 +87,22 @@ def show_quiz(
         container, text="", font=status_font, bg="#111827"
     )
     status_label.pack()
+
+    # 算数は答えたあとに式をブロックで見せる。あとから出すと画面がずれるので、
+    # 最初から空のキャンバスで場所をとっておく。
+    blocks_canvas = None
+    if show_blocks and question.blocks:
+        blocks_h = max(220, min(int(screen_h * 0.42), screen_h - 560))
+        blocks_canvas = tk.Canvas(
+            container, width=int(screen_w * 0.85), height=blocks_h,
+            bg="#111827", highlightthickness=0,
+        )
+        blocks_canvas.pack(pady=(16, 0))
+
+    def show_blocks_animation():
+        if blocks_canvas is None:
+            return 0
+        return blocks.show(blocks_canvas, question.blocks)
 
     music_job = None
 
@@ -164,7 +181,9 @@ def show_quiz(
                 # 効果音と重ならないよう少し待ってから読み上げる。
                 # 読み終わる前に画面が閉じても読み上げは最後まで続く。
                 win.after(900, lambda: speech.speak(reading))
-            win.after(3000, lambda: close_and_report(True))
+            blocks_ms = show_blocks_animation()
+            close_ms = blocks_ms + int(block_view_seconds * 1000) if blocks_canvas else 0
+            win.after(max(3000, close_ms), lambda: close_and_report(True))
         else:
             # 誤答時は正解を表示したまま wrong_wait_seconds 待たせてから書き写させる。
             # すぐ誤答して答えを見る方が早く画面を閉じられる「さぼり」対策。
@@ -178,6 +197,7 @@ def show_quiz(
             elif music_folder:
                 music.play_wait(music_folder)
             show_answer_countdown(heading, int(wrong_wait_seconds))
+            show_blocks_animation()
             music_job = win.after(int(idle_music_minutes * 60 * 1000), play_idle_music)
 
     def start_wait_music():

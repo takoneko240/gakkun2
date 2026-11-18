@@ -33,6 +33,14 @@ def multiplication_reading(a, b):
     return f"{number_to_hiragana(a)}　かける　{number_to_hiragana(b)}　は　{number_to_hiragana(a * b)}"
 
 
+def addsub_reading(a, op1, b, op2, c, result):
+    words = {"+": "たす", "-": "ひく"}
+    return (
+        f"{number_to_hiragana(a)}　{words[op1]}　{number_to_hiragana(b)}　"
+        f"{words[op2]}　{number_to_hiragana(c)}　は　{number_to_hiragana(result)}"
+    )
+
+
 def _get_voice():
     global _voice
     if _voice is None:
