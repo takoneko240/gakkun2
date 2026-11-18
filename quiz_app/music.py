@@ -14,6 +14,8 @@ _ALIAS = "gakkun2music"
 
 # 誤答時の待ち時間に流す曲。放置時のランダム再生には含めない。
 WAIT_FILE_NAME = "wait.mp3"
+# 出題から question_music_seconds 秒たっても答えていないときに流す曲。これもランダム再生には含めない。
+QUESTION_FILE_NAME = "q.mp3"
 
 
 def _mci(command):
@@ -31,7 +33,7 @@ def list_mp3_files(folder):
         return []
     return [
         path for path in glob.glob(os.path.join(folder, "*.mp3"))
-        if os.path.basename(path).lower() != WAIT_FILE_NAME
+        if os.path.basename(path).lower() not in (WAIT_FILE_NAME, QUESTION_FILE_NAME)
     ]
 
 
@@ -43,9 +45,17 @@ def play_random(folder):
 
 
 def play_wait(folder):
-    path = os.path.join(folder, WAIT_FILE_NAME)
+    return _play_named(folder, WAIT_FILE_NAME, "待ち時間の曲")
+
+
+def play_question(folder):
+    return _play_named(folder, QUESTION_FILE_NAME, "出題の曲")
+
+
+def _play_named(folder, name, label):
+    path = os.path.join(folder, name)
     if not os.path.isfile(path):
-        logger.warning("待ち時間の曲がありません: %s", path)
+        logger.warning("%sがありません: %s", label, path)
         return False
     return play_file(path)
 

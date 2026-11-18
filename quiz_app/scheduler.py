@@ -87,6 +87,7 @@ class Scheduler:
             speak_answer=self.config["speak_math_answer"],
             show_blocks=self.config["show_blocks"],
             block_view_seconds=self.config["block_view_seconds"],
+            question_music_seconds=self.config["question_music_seconds"],
         )
 
     def _on_result(self, correct, question):

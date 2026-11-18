@@ -19,6 +19,8 @@ DEFAULTS = {
     "block_view_seconds": 4,
     "music_folder": "music",
     "idle_music_minutes": 10,
+    # 出題から この秒数たっても答えていなければ music/q.mp3 を1回流す（0 で流さない）。
+    "question_music_seconds": 10,
     "allowance_per_correct": 2,
     # カテゴリの出題比率（相対値）。ここに無いカテゴリは 1 として扱う。
     # 掛け算・割り算は、答えたあと（正解でも不正解でも）九九を読み上げる。

@@ -18,6 +18,7 @@ def show_quiz(
     root, question, on_result, monitor_geometry=None, music_folder=None,
     idle_music_minutes=10, total_yen=0, allowance_per_correct=0,
     wrong_wait_seconds=10, speak_answer=True, show_blocks=True, block_view_seconds=4,
+    question_music_seconds=10,
 ):
     win = tk.Toplevel(root)
     win.overrideredirect(True)
@@ -105,9 +106,16 @@ def show_quiz(
         return blocks.show(blocks_canvas, question.blocks)
 
     music_job = None
+    question_music_job = None
 
     def stop_idle_music():
-        nonlocal music_job
+        nonlocal music_job, question_music_job
+        if question_music_job is not None:
+            try:
+                win.after_cancel(question_music_job)
+            except Exception:
+                pass
+            question_music_job = None
         if music_job is not None:
             try:
                 win.after_cancel(music_job)
@@ -239,6 +247,12 @@ def show_quiz(
     entry.focus_set()
     ime_job = win.after(50, apply_ime_mode)
     music_job = win.after(int(idle_music_minutes * 60 * 1000), play_idle_music)
+    # 出題から question_music_seconds 秒たっても答えていなければ q.mp3 を1回流す。
+    # 答える（エンターを押す）と止まる。
+    if music_folder and question_music_seconds:
+        question_music_job = win.after(
+            int(question_music_seconds * 1000), lambda: music.play_question(music_folder),
+        )
 
     return win
 
